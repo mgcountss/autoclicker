@@ -138,6 +138,31 @@
             width: 100%;
             transition: width 0.3s ease;
         }
+        
+        .interval-control {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+        
+        .slider {
+            flex-grow: 1;
+            margin: 0 1rem;
+        }
+        
+        .interval-value {
+            font-weight: bold;
+            color: #0066ff;
+            min-width: 60px;
+        }
     </style>
 </head>
 
@@ -165,6 +190,16 @@
         <div class="progress-container">
             <div class="progress-bar" id="successRateBar"></div>
         </div>
+        
+        <div class="interval-control">
+            <div><strong>Click Interval</strong></div>
+            <div class="slider-container">
+                <span>Fast</span>
+                <input type="range" min="1" max="5000" value="1000" class="slider" id="intervalSlider">
+                <span>Slow</span>
+            </div>
+            <div>Current interval: <span id="intervalValue" class="interval-value">1000</span> ms</div>
+        </div>
 
         <div>
             <button id="startBtn" disabled>Start</button>
@@ -187,6 +222,7 @@
         const maxLogs = 50;
         let successfulRequests = 0;
         let totalRequests = 0;
+        let intervalTime = 1000; // Default interval in milliseconds
 
         // Elements
         const counterEl = document.getElementById('counter');
@@ -200,6 +236,8 @@
         const successfulRequestsEl = document.getElementById('successfulRequests');
         const totalRequestsEl = document.getElementById('totalRequests');
         const successRateBarEl = document.getElementById('successRateBar');
+        const intervalSlider = document.getElementById('intervalSlider');
+        const intervalValueEl = document.getElementById('intervalValue');
 
         // Update counter display
         function updateCounter() {
@@ -283,9 +321,9 @@
             startBtn.disabled = true;
             stopBtn.disabled = false;
 
-            // Start the interval
-            clickInterval = setInterval(sendClick);
-            addLog("Auto clicker started");
+            // Start the interval with current interval time
+            clickInterval = setInterval(sendClick, intervalTime);
+            addLog(`Auto clicker started with ${intervalTime}ms interval`);
         }
 
         // Stop clicker
@@ -313,15 +351,32 @@
             updateSuccessStats();
             addLog("Counter reset");
         }
+        
+        // Update interval
+        function updateInterval() {
+            intervalTime = parseInt(intervalSlider.value);
+            intervalValueEl.textContent = intervalTime;
+            
+            // If currently running, restart with new interval
+            if (isRunning) {
+                clearInterval(clickInterval);
+                clickInterval = setInterval(sendClick, intervalTime);
+                addLog(`Interval updated to ${intervalTime}ms`);
+            }
+        }
 
         // Event listeners
         startBtn.addEventListener('click', startClicker);
         stopBtn.addEventListener('click', stopClicker);
         resetBtn.addEventListener('click', resetCounter);
+        intervalSlider.addEventListener('input', function() {
+            intervalValueEl.textContent = this.value;
+        });
+        intervalSlider.addEventListener('change', updateInterval);
 
-        // Initialize clicker
-        clickInterval = setInterval(sendClick);
-        addLog("Auto clicker initialized");
+        // Initialize clicker with the default interval
+        clickInterval = setInterval(sendClick, intervalTime);
+        addLog(`Auto clicker initialized with ${intervalTime}ms interval`);
         updateCounter();
         updateSuccessStats();
     </script>
