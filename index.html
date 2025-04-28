@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Clicker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .counter {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #0066ff;
+            margin: 1.5rem 0;
+        }
+
+        .status {
+            padding: 0.5rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .running {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .stopped {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        button {
+            background-color: #0066ff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0052cc;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .click-rate {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 1rem 0;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 0.25rem;
+        }
+
+        .success-rate {
+            color: #28a745;
+        }
+
+        .logs {
+            margin-top: 1rem;
+            height: 150px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            text-align: left;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #28a745;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Auto Clicker</h1>
+        <div class="status running" id="status">Running</div>
+        <div class="counter" id="counter">0</div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value success-rate" id="successRate">100%</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Successful Requests</div>
+                <div class="stat-value" id="successfulRequests">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Requests</div>
+                <div class="stat-value" id="totalRequests">0</div>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="successRateBar"></div>
+        </div>
+
+        <div>
+            <button id="startBtn" disabled>Start</button>
+            <button id="stopBtn">Stop</button>
+            <button id="resetBtn">Reset Counter</button>
+        </div>
+        <div class="click-rate">
+            Click Rate: <span id="clickRate">0</span> clicks/second
+        </div>
+        <div class="logs" id="logs"></div>
+    </div>
+
+    <script>
+        // Variables
+        let clicks = 0;
+        let isRunning = true;
+        let clickInterval;
+        let startTime = Date.now();
+        let logCount = 0;
+        const maxLogs = 50;
+        let successfulRequests = 0;
+        let totalRequests = 0;
+
+        // Elements
+        const counterEl = document.getElementById('counter');
+        const statusEl = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clickRateEl = document.getElementById('clickRate');
+        const logsEl = document.getElementById('logs');
+        const successRateEl = document.getElementById('successRate');
+        const successfulRequestsEl = document.getElementById('successfulRequests');
+        const totalRequestsEl = document.getElementById('totalRequests');
+        const successRateBarEl = document.getElementById('successRateBar');
+
+        // Update counter display
+        function updateCounter() {
+            counterEl.textContent = clicks.toLocaleString('en-US');
+
+            // Update click rate every second
+            const elapsedSeconds = (Date.now() - startTime) / 1000;
+            if (elapsedSeconds > 0) {
+                const rate = (clicks / elapsedSeconds).toFixed(2);
+                clickRateEl.textContent = rate;
+            }
+        }
+
+        // Update success stats
+        function updateSuccessStats() {
+            successfulRequestsEl.textContent = successfulRequests.toLocaleString('en-US');
+            totalRequestsEl.textContent = totalRequests.toLocaleString('en-US');
+
+            const successRate = totalRequests === 0 ? 100 : Math.round((successfulRequests / totalRequests) * 100);
+            successRateEl.textContent = `${successRate}%`;
+            successRateBarEl.style.width = `${successRate}%`;
+
+            // Change color based on success rate
+            if (successRate > 90) {
+                successRateBarEl.style.backgroundColor = '#28a745'; // Green
+            } else if (successRate > 75) {
+                successRateBarEl.style.backgroundColor = '#ffc107'; // Yellow
+            } else {
+                successRateBarEl.style.backgroundColor = '#dc3545'; // Red
+            }
+        }
+
+        // Add log entry
+        function addLog(message) {
+            logCount++;
+            const logEntry = document.createElement('div');
+            logEntry.textContent = message;
+            logsEl.appendChild(logEntry);
+
+            // Auto-scroll to bottom
+            logsEl.scrollTop = logsEl.scrollHeight;
+
+            // Limit number of logs
+            if (logCount > maxLogs) {
+                logsEl.removeChild(logsEl.firstChild);
+            }
+        }
+
+        // Click function
+        function sendClick() {
+            if (!isRunning) return;
+
+            totalRequests++;
+
+            fetch("https://clicker.toasted.dev/api/click", {
+                "method": "POST"
+            }).then(res => {
+                if (res.ok) {
+                    successfulRequests++;
+                    clicks++;
+                    updateCounter();
+                    addLog(`Successfully Clicked! Total: ${clicks.toLocaleString('en-US')}`);
+                } else {
+                    addLog(`Error: Request failed with status ${res.status}`);
+                }
+                return res.text();
+            }).catch(err => {
+                addLog(`Error: ${err.message}`);
+            }).finally(() => {
+                updateSuccessStats();
+            });
+        }
+
+        // Start clicker
+        function startClicker() {
+            if (isRunning) return;
+
+            isRunning = true;
+            statusEl.textContent = "Running";
+            statusEl.className = "status running";
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+
+            // Start the interval
+            clickInterval = setInterval(sendClick);
+            addLog("Auto clicker started");
+        }
+
+        // Stop clicker
+        function stopClicker() {
+            if (!isRunning) return;
+
+            isRunning = false;
+            statusEl.textContent = "Stopped";
+            statusEl.className = "status stopped";
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+
+            // Clear the interval
+            clearInterval(clickInterval);
+            addLog("Auto clicker stopped");
+        }
+
+        // Reset counter
+        function resetCounter() {
+            clicks = 0;
+            successfulRequests = 0;
+            totalRequests = 0;
+            startTime = Date.now();
+            updateCounter();
+            updateSuccessStats();
+            addLog("Counter reset");
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startClicker);
+        stopBtn.addEventListener('click', stopClicker);
+        resetBtn.addEventListener('click', resetCounter);
+
+        // Initialize clicker
+        clickInterval = setInterval(sendClick);
+        addLog("Auto clicker initialized");
+        updateCounter();
+        updateSuccessStats();
+    </script>
+</body>
+
+</html>
